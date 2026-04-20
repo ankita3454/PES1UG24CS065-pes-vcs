@@ -23,13 +23,10 @@ int commit_create(const char *message, ObjectID *id_out) {
         if (fscanf(f_head, "ref: %255s", ref_path) == 1) {
             char full_ref_path[512];
             snprintf(full_ref_path, sizeof(full_ref_path), ".pes/%s", ref_path);
-            
             FILE *f_ref = fopen(full_ref_path, "r");
             if (f_ref) {
                 char hex[HASH_HEX_SIZE + 1];
-                if (fscanf(f_ref, "%64s", hex) == 1 && hex_to_hash(hex, &parent_id) == 0) {
-                    has_parent = 1;
-                }
+                if (fscanf(f_ref, "%64s", hex) == 1 && hex_to_hash(hex, &parent_id) == 0) has_parent = 1;
                 fclose(f_ref);
             }
         }
@@ -48,16 +45,12 @@ int commit_create(const char *message, ObjectID *id_out) {
 
     if (has_parent) {
         hash_to_hex(&parent_id, parent_hex);
-        len = sprintf(buffer, "tree %s\nparent %s\nauthor %s\ntimestamp %lu\n\n%s\n",
-                      tree_hex, parent_hex, author, (unsigned long)now, message);
+        len = sprintf(buffer, "tree %s\nparent %s\nauthor %s\ntimestamp %lu\n\n%s\n", tree_hex, parent_hex, author, (unsigned long)now, message);
     } else {
-        len = sprintf(buffer, "tree %s\nauthor %s\ntimestamp %lu\n\n%s\n",
-                      tree_hex, author, (unsigned long)now, message);
+        len = sprintf(buffer, "tree %s\nauthor %s\ntimestamp %lu\n\n%s\n", tree_hex, author, (unsigned long)now, message);
     }
 
-    if (object_write(OBJ_COMMIT, buffer, len, id_out) != 0) {
-        free(buffer); return -1;
-    }
+    if (object_write(OBJ_COMMIT, buffer, len, id_out) != 0) { free(buffer); return -1; }
 
     FILE *f_head_read = fopen(HEAD_FILE, "r");
     if (f_head_read) {
@@ -66,16 +59,11 @@ int commit_create(const char *message, ObjectID *id_out) {
             char full_ref_path[512], commit_hex[HASH_HEX_SIZE + 1];
             snprintf(full_ref_path, sizeof(full_ref_path), ".pes/%s", ref_path);
             hash_to_hex(id_out, commit_hex);
-            
             FILE *f_ref_write = fopen(full_ref_path, "w");
-            if (f_ref_write) {
-                fprintf(f_ref_write, "%s\n", commit_hex);
-                fclose(f_ref_write);
-            }
+            if (f_ref_write) { fprintf(f_ref_write, "%s\n", commit_hex); fclose(f_ref_write); }
         }
         fclose(f_head_read);
     }
-
     free(buffer);
     return 0;
 }
@@ -93,10 +81,7 @@ int commit_walk(void (*cb)(const ObjectID *id, const Commit *commit, void *ctx),
         FILE *f_ref = fopen(full_ref, "r");
         if (f_ref) {
             char hex[HASH_HEX_SIZE + 1];
-            if (fscanf(f_ref, "%64s", hex) == 1) {
-                hex_to_hash(hex, &current_id);
-                has_current = 1;
-            }
+            if (fscanf(f_ref, "%64s", hex) == 1) { hex_to_hash(hex, &current_id); has_current = 1; }
             fclose(f_ref);
         }
     }
@@ -105,10 +90,7 @@ int commit_walk(void (*cb)(const ObjectID *id, const Commit *commit, void *ctx),
     if (!has_current) return -1;
 
     while (has_current) {
-        ObjectType type;
-        void *data;
-        size_t len;
-
+        ObjectType type; void *data; size_t len;
         if (object_read(&current_id, &type, &data, &len) != 0) break;
         if (type != OBJ_COMMIT) { free(data); break; }
 
@@ -118,21 +100,16 @@ int commit_walk(void (*cb)(const ObjectID *id, const Commit *commit, void *ctx),
         char *ptr = (char *)data;
         
         if (sscanf(ptr, "tree %64s", tree_hex) == 1) hex_to_hash(tree_hex, &commit.tree);
-        
         char *parent_ptr = strstr(ptr, "parent ");
         if (parent_ptr && sscanf(parent_ptr, "parent %64s", parent_hex) == 1) {
-            hex_to_hash(parent_hex, &commit.parent);
-            commit.has_parent = 1;
+            hex_to_hash(parent_hex, &commit.parent); commit.has_parent = 1;
         }
-
         char *msg_ptr = strstr(ptr, "\n\n");
         if (msg_ptr) strncpy(commit.message, msg_ptr + 2, sizeof(commit.message) - 1);
 
         cb(&current_id, &commit, ctx);
-
         if (commit.has_parent) current_id = commit.parent;
         else has_current = 0;
-        
         free(data);
     }
     return 0;

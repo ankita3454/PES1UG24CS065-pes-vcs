@@ -70,7 +70,6 @@ int index_load(Index *index) {
     memset(index, 0, sizeof(Index));
     FILE *f = fopen(INDEX_FILE, "r");
     if (!f) return 0; 
-
     char hex[HASH_HEX_SIZE + 1];
     char line[1024];
     while (index->count < MAX_INDEX_ENTRIES && fgets(line, sizeof(line), f)) {
@@ -88,7 +87,6 @@ int index_save(const Index *index) {
     if (!index) return -1;
     FILE *f = fopen(INDEX_FILE, "w");
     if (!f) return -1;
-
     for (int i = 0; i < index->count; i++) {
         char hex[HASH_HEX_SIZE + 1];
         hash_to_hex(&index->entries[i].hash, hex);
@@ -114,9 +112,7 @@ int index_add(Index *index, const char *path) {
     fclose(f);
 
     ObjectID id;
-    if (object_write(OBJ_BLOB, data, st.st_size, &id) != 0) {
-        free(data); return -1;
-    }
+    if (object_write(OBJ_BLOB, data, st.st_size, &id) != 0) { free(data); return -1; }
     free(data);
 
     IndexEntry *e = index_find(index, path);
@@ -131,6 +127,5 @@ int index_add(Index *index, const char *path) {
     e->hash = id;
     e->mtime_sec = (uint64_t)st.st_mtime;
     e->size = (uint32_t)st.st_size;
-
     return index_save(index);
 }
